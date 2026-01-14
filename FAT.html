@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>晓琪的美食蜕变记</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #f5f5dc;
+            font-family: "微软雅黑", sans-serif;
+            text-align: center;
+            padding-top: 20px;
+        }
+        .game-container {
+            width: 800px;
+            height: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            border: 5px solid #e6b89c;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .weight-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255,255,255,0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #d64933;
+        }
+        .player {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 180px;
+            transition: all 0.3s ease;
+        }
+        .food {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            animation: fall 3s linear infinite;
+        }
+        @keyframes fall {
+            0% {
+                top: -50px;
+                opacity: 1;
+            }
+            100% {
+                top: 600px;
+                opacity: 0;
+            }
+        }
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(214,73,51,0.9);
+            color: #fff;
+            padding: 50px 80px;
+            border-radius: 20px;
+            font-size: 36px;
+            font-weight: bold;
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .restart-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            background-color: #fff;
+            color: #d64933;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .restart-btn:hover {
+            background-color: #f5f5f5;
+            transform: scale(1.05);
+        }
+        .stage-tip {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            background-color: rgba(255,255,255,0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #6a994e;
+        }
+    </style>
+</head>
+<body>
+    <h1>晓琪的美食蜕变记</h1>
+    <p>点击掉落的食物让晓琪进食，体重达到200斤即可通关！</p>
+    
+    <div class="game-container" id="gameContainer">
+        <div class="weight-panel" id="weightPanel">当前体重：90 斤</div>
+        <div class="stage-tip" id="stageTip">阶段：轻盈吃货期</div>
+        <img src="https://img.icons8.com/fluency/96/000000/girl.png" alt="张晓琪" class="player" id="player">
+        
+        <div class="game-over" id="gameOver">
+            <div>恭喜通关！</div>
+            <div>晓琪成功蜕变啦～</div>
+            <button class="restart-btn" id="restartBtn">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏核心变量
+        const gameContainer = document.getElementById('gameContainer');
+        const player = document.getElementById('player');
+        const weightPanel = document.getElementById('weightPanel');
+        const stageTip = document.getElementById('stageTip');
+        const gameOver = document.getElementById('gameOver');
+        const restartBtn = document.getElementById('restartBtn');
+        
+        let currentWeight = 90; // 初始体重
+        const targetWeight = 200; // 目标体重
+        let gameRunning = true;
+        
+        // 食物图片数组（可替换为自己的图片链接）
+        const foodImages = [
+            'https://img.icons8.com/fluency/96/000000/apple.png',
+            'https://img.icons8.com/fluency/96/000000/burger.png',
+            'https://img.icons8.com/fluency/96/000000/pizza.png',
+            'https://img.icons8.com/fluency/96/000000/ice-cream.png',
+            'https://img.icons8.com/fluency/96/000000/cake.png'
+        ];
+        
+        // 主角形象阶段配置
+        const playerStages = [
+            { weight: 130, img: 'https://img.icons8.com/fluency/96/000000/girl.png', tip: '阶段：轻盈吃货期' },
+            { weight: 170, img: 'https://img.icons8.com/fluency/120/000000/girl.png', tip: '阶段：圆润积累期' },
+            { weight: 200, img: 'https://img.icons8.com/fluency/150/000000/pig.png', tip: '阶段：蜕变冲刺期' }
+        ];
+        
+        // 生成随机食物
+        function createFood() {
+            if (!gameRunning) return;
+            
+            const food = document.createElement('img');
+            const randomImg = foodImages[Math.floor(Math.random() * foodImages.length)];
+            food.src = randomImg;
+            food.className = 'food';
+            
+            // 随机水平位置（避免超出容器）
+            const maxLeft = gameContainer.offsetWidth - 50;
+            const randomLeft = Math.random() * maxLeft;
+            food.style.left = randomLeft + 'px';
+            
+            // 食物点击事件（进食）
+            food.addEventListener('click', () => {
+                eatFood(food);
+            });
+            
+            gameContainer.appendChild(food);
+            
+            // 食物落地后移除
+            setTimeout(() => {
+                if (food.parentNode) {
+                    food.parentNode.removeChild(food);
+                }
+            }, 3000);
+        }
+        
+        // 进食逻辑
+        function eatFood(food) {
+            // 移除食物
+            food.parentNode.removeChild(food);
+            
+            // 增加体重（随机1-3斤）
+            const weightGain = Math.floor(Math.random() * 3) + 1;
+            currentWeight += weightGain;
+            
+            // 体重上限控制
+            if (currentWeight >= targetWeight) {
+                currentWeight = targetWeight;
+                gameClear();
+            }
+            
+            // 更新体重显示
+            weightPanel.textContent = `当前体重：${currentWeight} 斤`;
+            
+            // 检查是否需要切换主角形象
+            checkPlayerStage();
+        }
+        
+        // 检查并切换主角形象阶段
+        function checkPlayerStage() {
+            for (let i = playerStages.length - 1; i >= 0; i--) {
+                const stage = playerStages[i];
+                if (currentWeight >= stage.weight) {
+                    player.src = stage.img;
+                    stageTip.textContent = stage.tip;
+                    // 调整主角大小（对应圆润效果）
+                    if (i === 1) {
+                        player.style.width = '150px';
+                        player.style.height = '220px';
+                    } else if (i === 2) {
+                        player.style.width = '180px';
+                        player.style.height = '250px';
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // 游戏通关
+        function gameClear() {
+            gameRunning = false;
+            gameOver.style.display = 'flex';
+            // 停止生成新食物
+            clearInterval(foodCreateInterval);
+        }
+        
+        // 重新开始游戏
+        function restartGame() {
+            currentWeight = 90;
+            gameRunning = true;
+            // 重置显示
+            weightPanel.textContent = `当前体重：${currentWeight} 斤`;
+            player.src = playerStages[0].img;
+            player.style.width = '120px';
+            player.style.height = '180px';
+            stageTip.textContent = playerStages[0].tip;
+            gameOver.style.display = 'none';
+            // 清除现有食物
+            const allFood = document.querySelectorAll('.food');
+            allFood.forEach(food => food.remove());
+            // 重新开始生成食物
+            foodCreateInterval = setInterval(createFood, 1000);
+        }
+        
+        // 初始化游戏：每秒生成一个食物
+        let foodCreateInterval = setInterval(createFood, 1000);
+        
+        // 重新开始按钮事件
+        restartBtn.addEventListener('click', restartGame);
+    </script>
+</body>
+</html>
